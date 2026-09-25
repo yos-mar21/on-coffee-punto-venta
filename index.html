@@ -590,8 +590,12 @@
   printBtn.addEventListener('click', () => {
     if(Object.keys(order).length === 0 || saleLoggedForOrder) return;
     saveSale({ status: 'vendido', reason: 'Compra pagada' });
-    renderOrder();
     receipt.innerHTML = buildReceiptHTML('both');
+    order = {};
+    activeSaleId = null;
+    saleLoggedForOrder = false;
+    renderMenu();
+    renderOrder();
     window.print();
   });
 
