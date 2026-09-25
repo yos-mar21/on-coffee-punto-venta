@@ -52,7 +52,7 @@
         </div>
       </div>
       <div class="order-footer">
-        <button class="btn btn-secondary" id="printBtn" disabled>Ticket cliente</button>
+        <button class="btn btn-secondary" id="printBtn" disabled>Pagar</button>
         <button class="btn btn-primary" id="newOrderBtn" disabled>Nuevo pedido</button>
       </div>
       <button class="report-btn" id="reportBtn">Descargar reporte Excel</button>
@@ -162,7 +162,7 @@
   const milkChips = document.getElementById('milkChips');
   const modalQtyValue = document.getElementById('modalQtyValue');
   const IVA_RATE = 0.08;
-  const LOGO_SRC = 'logo_negro_vaso_transparente.png';
+  const LOGO_SRC = '../logo_negro_vaso_transparente.png';
   const SALES_KEY = 'sales';
   let saleLoggedForOrder = false;
 
@@ -471,7 +471,7 @@
     ivaAmount.textContent = fmt(taxes.iva);
     totalAmount.textContent = fmt(taxes.total);
     newOrderBtn.disabled = false;
-    printBtn.disabled = false;
+    printBtn.disabled = saleLoggedForOrder;
   }
 
   newOrderBtn.addEventListener('click', () => {
@@ -588,8 +588,9 @@
   }
 
   printBtn.addEventListener('click', () => {
-    if(Object.keys(order).length === 0) return;
-    saveSale({ status: 'vendido' });
+    if(Object.keys(order).length === 0 || saleLoggedForOrder) return;
+    saveSale({ status: 'vendido', reason: 'Compra pagada' });
+    renderOrder();
     receipt.innerHTML = buildReceiptHTML('both');
     window.print();
   });
