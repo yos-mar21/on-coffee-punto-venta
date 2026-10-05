@@ -599,6 +599,8 @@
 
   function buildEscPosReceipt(data){
     const ESC = '\x1B';
+    const GS = '\x1D';
+    const partialCut = GS + 'V' + '\x01';
     const width = 42;
     const divider = '-'.repeat(width);
     const now = new Date();
@@ -630,14 +632,14 @@
     receiptText += ESC + 'E' + '\x01';
     line('TOTAL', fmt(data.total));
     receiptText += ESC + 'E' + '\x00' + '\n';
-    receiptText += ESC + 'a' + '\x01' + 'Gracias por tu compra!\n\n\n';
+    receiptText += ESC + 'a' + '\x01' + 'Gracias por tu compra!\n\n\n' + partialCut;
     receiptText += ESC + 'E' + '\x01' + 'COMANDA BARISTA\n';
     receiptText += ESC + 'E' + '\x00' + escPosSafeText(date) + '\n' + divider + '\n';
     receiptText += ESC + 'a' + '\x00';
     data.lines.forEach(item => {
       receiptText += escPosSafeText(itemDescription(item)) + '\n';
     });
-    return receiptText + '\n\n\n';
+    return receiptText + '\n\n\n' + partialCut;
   }
 
   async function getReceiptPrinter(){
