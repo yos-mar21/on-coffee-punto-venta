@@ -606,7 +606,7 @@
     const now = new Date();
     const date = now.toLocaleDateString('es-MX') + ' ' +
       now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-    let receiptText = ESC + '@' + ' '.repeat(Math.floor((width - 9) / 2)) + 'ON COFFEE\n';
+    let receiptText = ' '.repeat(Math.floor((width - 9) / 2)) + 'ON COFFEE\n';
 
     function line(label, value){
       const safeLabel = escPosSafeText(label);
