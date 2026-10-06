@@ -600,7 +600,7 @@
   function buildEscPosReceipt(data){
     const ESC = '\x1B';
     const GS = '\x1D';
-    const fullCut = GS + 'V' + '\x00';
+    const fullCut = GS + 'V' + '0';
     const width = 42;
     const divider = '-'.repeat(width);
     const now = new Date();
