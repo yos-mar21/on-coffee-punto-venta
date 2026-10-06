@@ -619,7 +619,7 @@
       return `${item.qty} x ${item.name}${item.milk ? ' (' + item.milk + ')' : ''}`;
     }
 
-    receiptText += ESC + 'a' + '\x01' + ESC + 'E' + '\x01' + 'ON COFFEE\n';
+    receiptText += ESC + 'E' + '\x01' + ' '.repeat(Math.floor((width - 9) / 2)) + 'ON COFFEE\n';
     receiptText += ESC + 'E' + '\x00' + escPosSafeText(date) + '\n' + divider + '\n';
     receiptText += ESC + 'a' + '\x00';
     data.lines.forEach(item => {
