@@ -163,6 +163,7 @@
   const milkChips = document.getElementById('milkChips');
   const modalQtyValue = document.getElementById('modalQtyValue');
   const IVA_RATE = 0.08;
+  const OAT_MILK_EXTRA = 20;
   const LOGO_SRC = 'css/logo_negro_vaso_transparente.png';
   const SALES_KEY = 'sales';
   let saleLoggedForOrder = false;
@@ -213,6 +214,10 @@
   function milkLabel(id){
     const m = MILK_OPTIONS.find(x => x.id === id);
     return m ? m.label : null;
+  }
+
+  function getUnitPrice(item, milkId){
+    return item.price + (milkId === 'avena' ? OAT_MILK_EXTRA : 0);
   }
 
   async function loadMenu(){
@@ -387,10 +392,16 @@
     pendingMilk = 'entera';
     pendingQty = 1;
     modalItemName.textContent = item.name;
-    modalItemPrice.textContent = fmt(item.price);
+    updateMilkModalPrice();
     modalQtyValue.textContent = pendingQty;
     renderMilkChips();
     milkOverlay.classList.add('open');
+  }
+
+  function updateMilkModalPrice(){
+    if(!pendingItem) return;
+    modalItemPrice.textContent = fmt(getUnitPrice(pendingItem, pendingMilk)) +
+      (pendingMilk === 'avena' ? ' (incluye $20 extra)' : '');
   }
 
   function closeMilkModal(){
@@ -405,6 +416,7 @@
     milkChips.querySelectorAll('.milk-chip').forEach(btn => {
       btn.addEventListener('click', e => {
         pendingMilk = e.target.dataset.milk;
+        updateMilkModalPrice();
         renderMilkChips();
       });
     });
@@ -459,7 +471,8 @@
       const item = menu.find(m => m.id === itemId);
       if(!item) return;
       const qty = order[key];
-      const lineTotal = item.price * qty;
+      const unitPrice = getUnitPrice(item, milkId);
+      const lineTotal = unitPrice * qty;
       pricedLines.push({ item, amount: lineTotal });
       const milk = milkId !== 'none' ? milkLabel(milkId) : null;
       const row = document.createElement('div');
@@ -468,7 +481,7 @@
         <div class="order-line-name">
           ${escapeHTML(item.name)}
           ${milk ? `<br><span class="order-line-milk">${milk}</span>` : ''}
-          <span class="order-line-price">${fmt(item.price)} c/u</span>
+          <span class="order-line-price">${fmt(unitPrice)} c/u</span>
         </div>
         <div class="stepper">
           <button data-minus="${key}">−</button>
@@ -509,9 +522,10 @@
       const item = menu.find(m => m.id === itemId);
       if(!item) return;
       const qty = order[key];
-      const lineTotal = item.price * qty;
+      const unitPrice = getUnitPrice(item, milkId);
+      const lineTotal = unitPrice * qty;
       pricedLines.push({ item, amount: lineTotal });
-      lines.push({ name: item.name, qty, milk: milkId !== 'none' ? milkLabel(milkId) : '', price: item.price, lineTotal });
+      lines.push({ name: item.name, qty, milk: milkId !== 'none' ? milkLabel(milkId) : '', price: unitPrice, lineTotal });
     });
     const totals = calculateOrderTotals(pricedLines);
     return { lines, subtotal: totals.subtotal, iva: totals.iva, total: totals.total };
