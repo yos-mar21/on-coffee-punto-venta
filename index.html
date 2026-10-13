@@ -122,11 +122,11 @@
     { id: 'chocolate_on', name: 'Chocolate on', price: 90, category: 'especialidades', hasMilk: true },
     { id: 'fresa_kiwi', name: 'Fresa kiwi', price: 80, category: 'tes' },
     { id: 'frutas_pasion', name: 'frutas de la pasión', price: 80, category: 'tes' },
-    { id: 'frappe_oreo', name: 'Frappe de Oreo', price: 92.5, category: 'frappes', hasMilk: true },
-    { id: 'frappe_caramelo', name: 'Frappe de caramelo', price: 92.5, category: 'frappes', hasMilk: true },
-    { id: 'frappe_vainilla', name: 'Frappe de vainilla', price: 92.5, category: 'frappes', hasMilk: true },
-    { id: 'frappe_mazapan', name: 'Frappe de mazapán', price: 92.5, category: 'frappes', hasMilk: true },
-    { id: 'frappe_moka', name: 'FRAPPE DE MOKA', price: 92.5, category: 'frappes', hasMilk: true },
+    { id: 'frappe_oreo', name: 'Frappe de Oreo', price: 100, category: 'frappes', hasMilk: true },
+    { id: 'frappe_caramelo', name: 'Frappe de caramelo', price: 100, category: 'frappes', hasMilk: true },
+    { id: 'frappe_vainilla', name: 'Frappe de vainilla', price: 100, category: 'frappes', hasMilk: true },
+    { id: 'frappe_mazapan', name: 'Frappe de mazapán', price: 100, category: 'frappes', hasMilk: true },
+    { id: 'frappe_moka', name: 'FRAPPE DE MOKA', price: 100, category: 'frappes', hasMilk: true },
     { id: 'extra_shot', name: 'Shot espresso', price: 20, category: 'extras' },
     { id: 'extra_foam', name: 'Foam', price: 20, category: 'extras' },
     { id: 'extra_jarabe', name: 'Jarabe artesanal', price: 15, category: 'extras' },
@@ -136,7 +136,7 @@
     { id: 'extra_pastel_chocolate', name: 'REBANADA DE PASTEL CHOCOLATE', price: 60, category: 'extras' },
     { id: 'extra_cheesecake', name: 'REBANADA cheesecake', price: 60, category: 'extras' },
   ];
-  const MENU_VERSION = 7;
+  const MENU_VERSION = 8;
 
   let menu = [];
   let order = {};
@@ -175,7 +175,7 @@
   }
 
   function calculateLineAmounts(item, amount){
-    const includesIVA = ['barra', 'lattes', 'especialidades', 'extras'].includes(item.category);
+    const includesIVA = ['barra', 'lattes', 'especialidades', 'frappes', 'extras'].includes(item.category);
     if(includesIVA){
       const subtotal = amount / (1 + IVA_RATE);
       return { subtotal, iva: amount - subtotal, total: amount };
