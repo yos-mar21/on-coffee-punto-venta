@@ -94,6 +94,7 @@
     { id: 'especialidades', label: 'Especialidades', icon: '' },
     { id: 'tes', label: 'Tés y tisanas', icon: '' },
     { id: 'frappes', label: 'Frappes', icon: '' },
+    { id: 'postres', label: 'Postres', icon: '' },
     { id: 'extras', label: 'Extras', icon: '' },
   ];
 
@@ -127,6 +128,7 @@
     { id: 'frappe_vainilla', name: 'Frappe de vainilla', price: 100, category: 'frappes', hasMilk: true },
     { id: 'frappe_mazapan', name: 'Frappe de mazapán', price: 100, category: 'frappes', hasMilk: true },
     { id: 'frappe_moka', name: 'FRAPPE DE MOKA', price: 100, category: 'frappes', hasMilk: true },
+    { id: 'pan_muerto', name: 'Pan de muerto', price: 50, category: 'postres' },
     { id: 'extra_shot', name: 'Shot espresso', price: 20, category: 'extras' },
     { id: 'extra_foam', name: 'Foam', price: 20, category: 'extras' },
     { id: 'extra_jarabe', name: 'Jarabe artesanal', price: 15, category: 'extras' },
@@ -136,7 +138,7 @@
     { id: 'extra_pastel_chocolate', name: 'REBANADA DE PASTEL CHOCOLATE', price: 60, category: 'extras' },
     { id: 'extra_cheesecake', name: 'REBANADA cheesecake', price: 60, category: 'extras' },
   ];
-  const MENU_VERSION = 8;
+  const MENU_VERSION = 9;
 
   let menu = [];
   let order = {};
@@ -175,7 +177,7 @@
   }
 
   function calculateLineAmounts(item, amount){
-    const includesIVA = ['barra', 'lattes', 'especialidades', 'frappes', 'extras'].includes(item.category);
+    const includesIVA = ['barra', 'lattes', 'especialidades', 'frappes', 'postres', 'extras'].includes(item.category);
     if(includesIVA){
       const subtotal = amount / (1 + IVA_RATE);
       return { subtotal, iva: amount - subtotal, total: amount };
