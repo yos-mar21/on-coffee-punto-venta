@@ -68,8 +68,12 @@
       <h3 id="modalItemName"></h3>
       <div class="modal-price" id="modalItemPrice"></div>
     </div>
-    <div class="modal-label">Tipo de leche</div>
-    <div class="milk-chips" id="milkChips"></div>
+    <div id="milkOptions">
+      <div class="modal-label">Tipo de leche</div>
+      <div class="option-chips" id="milkChips"></div>
+    </div>
+    <div class="modal-label">¿Fría o caliente?</div>
+    <div class="option-chips temperature-chips" id="temperatureChips"></div>
     <div class="modal-qty">
       <span>Cantidad</span>
       <div class="stepper">
@@ -103,6 +107,12 @@
     { id: 'deslact', label: 'Deslactosada' },
     { id: 'avena', label: 'Avena' },
   ];
+
+  const TEMPERATURE_OPTIONS = [
+    { id: 'caliente', label: 'Caliente' },
+    { id: 'fria', label: 'Fría' },
+  ];
+  const BEVERAGE_CATEGORIES = ['barra', 'lattes', 'especialidades', 'tes', 'frappes'];
 
   const DEFAULT_MENU = [
     { id: 'espresso', name: 'Espresso', price: 45, category: 'barra' },
@@ -145,6 +155,7 @@
   let editMode = false;
   let pendingItem = null;
   let pendingMilk = 'entera';
+  let pendingTemperature = 'caliente';
   let pendingQty = 1;
   let activeSaleId = null;
 
@@ -163,6 +174,8 @@
   const modalItemName = document.getElementById('modalItemName');
   const modalItemPrice = document.getElementById('modalItemPrice');
   const milkChips = document.getElementById('milkChips');
+  const milkOptions = document.getElementById('milkOptions');
+  const temperatureChips = document.getElementById('temperatureChips');
   const modalQtyValue = document.getElementById('modalQtyValue');
   const IVA_RATE = 0.08;
   const OAT_MILK_EXTRA = 20;
@@ -216,6 +229,15 @@
   function milkLabel(id){
     const m = MILK_OPTIONS.find(x => x.id === id);
     return m ? m.label : null;
+  }
+
+  function temperatureLabel(id){
+    const temperature = TEMPERATURE_OPTIONS.find(option => option.id === id);
+    return temperature ? temperature.label : null;
+  }
+
+  function isBeverage(item){
+    return BEVERAGE_CATEGORIES.includes(item.category);
   }
 
   function getUnitPrice(item, milkId){
@@ -291,8 +313,8 @@
         <div class="item-price">${fmt(item.price)}</div>
       `;
       btn.addEventListener('click', () => {
-        if(item.hasMilk){
-          openMilkModal(item);
+        if(isBeverage(item)){
+          openDrinkModal(item);
         } else {
           const key = item.id + '::none';
           order[key] = (order[key] || 0) + 1;
@@ -389,14 +411,16 @@
     }
   }
 
-  function openMilkModal(item){
+  function openDrinkModal(item){
     pendingItem = item;
-    pendingMilk = 'entera';
+    pendingMilk = item.hasMilk ? 'entera' : 'none';
+    pendingTemperature = 'caliente';
     pendingQty = 1;
     modalItemName.textContent = item.name;
     updateMilkModalPrice();
     modalQtyValue.textContent = pendingQty;
     renderMilkChips();
+    renderTemperatureChips();
     milkOverlay.classList.add('open');
   }
 
@@ -412,14 +436,28 @@
   }
 
   function renderMilkChips(){
+    milkOptions.hidden = !pendingItem.hasMilk;
+    if(!pendingItem.hasMilk) return;
     milkChips.innerHTML = MILK_OPTIONS.map(m =>
-      `<button class="milk-chip ${m.id === pendingMilk ? 'selected' : ''}" data-milk="${m.id}">${m.label}</button>`
+      `<button class="option-chip ${m.id === pendingMilk ? 'selected' : ''}" data-milk="${m.id}">${m.label}</button>`
     ).join('');
-    milkChips.querySelectorAll('.milk-chip').forEach(btn => {
+    milkChips.querySelectorAll('.option-chip').forEach(btn => {
       btn.addEventListener('click', e => {
         pendingMilk = e.target.dataset.milk;
         updateMilkModalPrice();
         renderMilkChips();
+      });
+    });
+  }
+
+  function renderTemperatureChips(){
+    temperatureChips.innerHTML = TEMPERATURE_OPTIONS.map(option =>
+      `<button class="option-chip ${option.id === pendingTemperature ? 'selected' : ''}" data-temperature="${option.id}">${option.label}</button>`
+    ).join('');
+    temperatureChips.querySelectorAll('.option-chip').forEach(btn => {
+      btn.addEventListener('click', e => {
+        pendingTemperature = e.target.dataset.temperature;
+        renderTemperatureChips();
       });
     });
   }
@@ -433,7 +471,7 @@
   document.getElementById('modalCancel').addEventListener('click', closeMilkModal);
   document.getElementById('modalConfirm').addEventListener('click', () => {
     if(!pendingItem) return;
-    const key = pendingItem.id + '::' + pendingMilk;
+    const key = pendingItem.id + '::' + pendingMilk + '::' + pendingTemperature;
     order[key] = (order[key] || 0) + pendingQty;
     closeMilkModal();
     renderMenu();
@@ -469,7 +507,7 @@
     const pricedLines = [];
     orderList.innerHTML = '';
     keys.forEach(key => {
-      const [itemId, milkId] = key.split('::');
+      const [itemId, milkId, temperatureId] = key.split('::');
       const item = menu.find(m => m.id === itemId);
       if(!item) return;
       const qty = order[key];
@@ -477,12 +515,13 @@
       const lineTotal = unitPrice * qty;
       pricedLines.push({ item, amount: lineTotal });
       const milk = milkId !== 'none' ? milkLabel(milkId) : null;
+      const temperature = temperatureLabel(temperatureId);
       const row = document.createElement('div');
       row.className = 'order-line';
       row.innerHTML = `
         <div class="order-line-name">
           ${escapeHTML(item.name)}
-          ${milk ? `<br><span class="order-line-milk">${milk}</span>` : ''}
+          ${temperature || milk ? `<br><span class="order-line-milk">${[temperature, milk].filter(Boolean).join(' · ')}</span>` : ''}
           <span class="order-line-price">${fmt(unitPrice)} c/u</span>
         </div>
         <div class="stepper">
@@ -520,14 +559,21 @@
     const lines = [];
     const pricedLines = [];
     Object.keys(order).forEach(key => {
-      const [itemId, milkId] = key.split('::');
+      const [itemId, milkId, temperatureId] = key.split('::');
       const item = menu.find(m => m.id === itemId);
       if(!item) return;
       const qty = order[key];
       const unitPrice = getUnitPrice(item, milkId);
       const lineTotal = unitPrice * qty;
       pricedLines.push({ item, amount: lineTotal });
-      lines.push({ name: item.name, qty, milk: milkId !== 'none' ? milkLabel(milkId) : '', price: unitPrice, lineTotal });
+      lines.push({
+        name: item.name,
+        qty,
+        milk: milkId !== 'none' ? milkLabel(milkId) : '',
+        temperature: temperatureLabel(temperatureId) || '',
+        price: unitPrice,
+        lineTotal
+      });
     });
     const totals = calculateOrderTotals(pricedLines);
     return { lines, subtotal: totals.subtotal, iva: totals.iva, total: totals.total };
@@ -537,16 +583,19 @@
     const now = new Date();
     const fecha = now.toLocaleDateString('es-MX') + ' ' + now.toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'});
     const data = getCurrentOrderData();
+    function lineOptions(line){
+      return [line.temperature, line.milk].filter(Boolean).join(', ');
+    }
     const customerLinesHtml = data.lines.map(line => {
       return `
         <div class="r-line">
-          <span class="r-name">${line.qty} x ${escapeHTML(line.name)}${line.milk ? ' (' + escapeHTML(line.milk) + ')' : ''}</span>
+          <span class="r-name">${line.qty} x ${escapeHTML(line.name)}${lineOptions(line) ? ' (' + escapeHTML(lineOptions(line)) + ')' : ''}</span>
           <span>${fmt(line.lineTotal)}</span>
         </div>`;
     }).join('');
     const baristaLinesHtml = data.lines.map(line => `
         <div class="r-line">
-          <span class="r-name">${line.qty} x ${escapeHTML(line.name)}${line.milk ? ' (' + escapeHTML(line.milk) + ')' : ''}</span>
+          <span class="r-name">${line.qty} x ${escapeHTML(line.name)}${lineOptions(line) ? ' (' + escapeHTML(lineOptions(line)) + ')' : ''}</span>
         </div>`).join('');
     const baristaHTML = `
         <div class="r-brand"><img src="${LOGO_SRC}" alt="On Coffee"></div>
@@ -646,7 +695,8 @@
     }
 
     function itemDescription(item){
-      return `${item.qty} x ${item.name}${item.milk ? ' (' + item.milk + ')' : ''}`;
+      const options = [item.temperature, item.milk].filter(Boolean).join(', ');
+      return `${item.qty} x ${item.name}${options ? ' (' + options + ')' : ''}`;
     }
 
     receiptText += ESC + 'E' + '\x00' + escPosSafeText(date) + '\n' + divider + '\n';
@@ -773,7 +823,7 @@
       ['Gran total neto', (totalVendidos - totalBorrados).toFixed(2)]
     ];
 
-    const detailRows = [['Fecha', 'Hora', 'Estado', 'Producto', 'Leche', 'Cantidad', 'Precio unitario', 'Subtotal venta', 'IVA 8%', 'Total venta', 'Motivo']];
+    const detailRows = [['Fecha', 'Hora', 'Estado', 'Producto', 'Temperatura', 'Leche', 'Cantidad', 'Precio unitario', 'Subtotal venta', 'IVA 8%', 'Total venta', 'Motivo']];
     sales.forEach(sale => {
       const date = new Date(sale.timestamp);
       const status = sale.status === 'cancelado' ? 'Borrado' : 'Vendido';
@@ -785,6 +835,7 @@
           date.toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'}),
           status,
           'Pedido',
+          '',
           '',
           '',
           '',
@@ -801,6 +852,7 @@
         date.toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'}),
         status,
         line.name,
+        line.temperature || 'No aplica',
         line.milk || 'No aplica',
         line.qty,
         Number(line.price).toFixed(2),
