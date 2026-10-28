@@ -35,7 +35,11 @@
     </div>
 
     <div class="order-panel">
-      <div class="order-header"><h2>Pedido actual</h2></div>
+      <div class="order-header">
+        <h2>Pedido actual</h2>
+        <label class="customer-name-field" for="customerName">Nombre del cliente (opcional)</label>
+        <input id="customerName" class="customer-name-input" type="text" maxlength="60" placeholder="Escribe el nombre" autocomplete="off">
+      </div>
       <div class="order-list" id="orderList"></div>
       <div class="total-strip">
         <div class="total-row">
@@ -74,6 +78,8 @@
     </div>
     <div class="modal-label">¿Fría o caliente?</div>
     <div class="option-chips temperature-chips" id="temperatureChips"></div>
+    <div class="modal-label">Extras para tu bebida</div>
+    <div class="option-chips extra-chips" id="extraChips"></div>
     <div class="modal-qty">
       <span>Cantidad</span>
       <div class="stepper">
@@ -156,8 +162,10 @@
   let pendingItem = null;
   let pendingMilk = 'entera';
   let pendingTemperature = 'caliente';
+  let pendingExtras = new Set();
   let pendingQty = 1;
   let activeSaleId = null;
+  let customerName = '';
 
   const menuScroll = document.getElementById('menuScroll');
   const orderList = document.getElementById('orderList');
@@ -176,7 +184,9 @@
   const milkChips = document.getElementById('milkChips');
   const milkOptions = document.getElementById('milkOptions');
   const temperatureChips = document.getElementById('temperatureChips');
+  const extraChips = document.getElementById('extraChips');
   const modalQtyValue = document.getElementById('modalQtyValue');
+  const customerNameInput = document.getElementById('customerName');
   const IVA_RATE = 0.08;
   const OAT_MILK_EXTRA = 20;
   const LOGO_SRC = 'css/logo_negro_vaso_transparente.png';
@@ -240,8 +250,26 @@
     return BEVERAGE_CATEGORIES.includes(item.category);
   }
 
-  function getUnitPrice(item, milkId){
-    return item.price + (milkId === 'avena' ? OAT_MILK_EXTRA : 0);
+  function availableExtras(item){
+    return menu.filter(extra =>
+      extra.category === 'extras' && !(item.hasMilk && extra.id === 'extra_leche_avena')
+    );
+  }
+
+  function selectedExtraItems(extraIds){
+    return extraIds.map(id => menu.find(item => item.id === id && item.category === 'extras'))
+      .filter(Boolean);
+  }
+
+  function getUnitPrice(item, milkId, extraIds = []){
+    const milkExtra = milkId === 'avena' && item.hasMilk ? OAT_MILK_EXTRA : 0;
+    const extrasTotal = selectedExtraItems(extraIds).reduce((sum, extra) => sum + Number(extra.price || 0), 0);
+    return item.price + milkExtra + extrasTotal;
+  }
+
+  function parseOrderKey(key){
+    const [itemId, milkId, temperatureId, extras = ''] = key.split('::');
+    return { itemId, milkId, temperatureId, extraIds: extras ? extras.split(',') : [] };
   }
 
   async function loadMenu(){
@@ -415,19 +443,20 @@
     pendingItem = item;
     pendingMilk = item.hasMilk ? 'entera' : 'none';
     pendingTemperature = 'caliente';
+    pendingExtras = new Set();
     pendingQty = 1;
     modalItemName.textContent = item.name;
     updateMilkModalPrice();
     modalQtyValue.textContent = pendingQty;
     renderMilkChips();
     renderTemperatureChips();
+    renderExtraChips();
     milkOverlay.classList.add('open');
   }
 
   function updateMilkModalPrice(){
     if(!pendingItem) return;
-    modalItemPrice.textContent = fmt(getUnitPrice(pendingItem, pendingMilk)) +
-      (pendingMilk === 'avena' ? ' (incluye $20 extra)' : '');
+    modalItemPrice.textContent = fmt(getUnitPrice(pendingItem, pendingMilk, [...pendingExtras]));
   }
 
   function closeMilkModal(){
@@ -462,6 +491,29 @@
     });
   }
 
+  function renderExtraChips(){
+    const extras = availableExtras(pendingItem);
+    if(extras.length === 0){
+      extraChips.innerHTML = '<span class="no-extras">No hay extras disponibles.</span>';
+      return;
+    }
+    extraChips.innerHTML = extras.map(extra =>
+      `<button class="option-chip ${pendingExtras.has(extra.id) ? 'selected' : ''}" data-extra="${escapeHTML(extra.id)}">${escapeHTML(extra.name)} +${fmt(extra.price)}</button>`
+    ).join('');
+    extraChips.querySelectorAll('.option-chip').forEach(btn => {
+      btn.addEventListener('click', e => {
+        const extraId = e.currentTarget.dataset.extra;
+        if(pendingExtras.has(extraId)){
+          pendingExtras.delete(extraId);
+        }else{
+          pendingExtras.add(extraId);
+        }
+        updateMilkModalPrice();
+        renderExtraChips();
+      });
+    });
+  }
+
   document.getElementById('modalQtyMinus').addEventListener('click', () => {
     if(pendingQty > 1){ pendingQty--; modalQtyValue.textContent = pendingQty; }
   });
@@ -471,7 +523,8 @@
   document.getElementById('modalCancel').addEventListener('click', closeMilkModal);
   document.getElementById('modalConfirm').addEventListener('click', () => {
     if(!pendingItem) return;
-    const key = pendingItem.id + '::' + pendingMilk + '::' + pendingTemperature;
+    const extraIds = [...pendingExtras].sort();
+    const key = [pendingItem.id, pendingMilk, pendingTemperature, extraIds.join(',')].join('::');
     order[key] = (order[key] || 0) + pendingQty;
     closeMilkModal();
     renderMenu();
@@ -507,21 +560,22 @@
     const pricedLines = [];
     orderList.innerHTML = '';
     keys.forEach(key => {
-      const [itemId, milkId, temperatureId] = key.split('::');
+      const { itemId, milkId, temperatureId, extraIds } = parseOrderKey(key);
       const item = menu.find(m => m.id === itemId);
       if(!item) return;
       const qty = order[key];
-      const unitPrice = getUnitPrice(item, milkId);
+      const unitPrice = getUnitPrice(item, milkId, extraIds);
       const lineTotal = unitPrice * qty;
       pricedLines.push({ item, amount: lineTotal });
       const milk = milkId !== 'none' ? milkLabel(milkId) : null;
       const temperature = temperatureLabel(temperatureId);
+      const extras = selectedExtraItems(extraIds).map(extra => extra.name);
       const row = document.createElement('div');
       row.className = 'order-line';
       row.innerHTML = `
         <div class="order-line-name">
           ${escapeHTML(item.name)}
-          ${temperature || milk ? `<br><span class="order-line-milk">${[temperature, milk].filter(Boolean).join(' · ')}</span>` : ''}
+          ${temperature || milk || extras.length ? `<br><span class="order-line-milk">${[temperature, milk, ...extras].filter(Boolean).map(escapeHTML).join(' · ')}</span>` : ''}
           <span class="order-line-price">${fmt(unitPrice)} c/u</span>
         </div>
         <div class="stepper">
@@ -551,6 +605,8 @@
     order = {};
     saleLoggedForOrder = false;
     activeSaleId = null;
+    customerName = '';
+    customerNameInput.value = '';
     renderMenu();
     renderOrder();
   });
@@ -559,11 +615,11 @@
     const lines = [];
     const pricedLines = [];
     Object.keys(order).forEach(key => {
-      const [itemId, milkId, temperatureId] = key.split('::');
+      const { itemId, milkId, temperatureId, extraIds } = parseOrderKey(key);
       const item = menu.find(m => m.id === itemId);
       if(!item) return;
       const qty = order[key];
-      const unitPrice = getUnitPrice(item, milkId);
+      const unitPrice = getUnitPrice(item, milkId, extraIds);
       const lineTotal = unitPrice * qty;
       pricedLines.push({ item, amount: lineTotal });
       lines.push({
@@ -571,12 +627,13 @@
         qty,
         milk: milkId !== 'none' ? milkLabel(milkId) : '',
         temperature: temperatureLabel(temperatureId) || '',
+        extras: selectedExtraItems(extraIds).map(extra => ({ name: extra.name, price: Number(extra.price || 0) })),
         price: unitPrice,
         lineTotal
       });
     });
     const totals = calculateOrderTotals(pricedLines);
-    return { lines, subtotal: totals.subtotal, iva: totals.iva, total: totals.total };
+    return { customerName: customerName.trim(), lines, subtotal: totals.subtotal, iva: totals.iva, total: totals.total };
   }
 
   function buildReceiptHTML(mode){
@@ -584,7 +641,7 @@
     const fecha = now.toLocaleDateString('es-MX') + ' ' + now.toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'});
     const data = getCurrentOrderData();
     function lineOptions(line){
-      return [line.temperature, line.milk].filter(Boolean).join(', ');
+      return [line.temperature, line.milk, ...(line.extras || []).map(extra => extra.name)].filter(Boolean).join(', ');
     }
     const customerLinesHtml = data.lines.map(line => {
       return `
@@ -601,12 +658,14 @@
         <div class="r-brand"><img src="${LOGO_SRC}" alt="On Coffee"></div>
         <div class="r-shop">COMANDA BARISTA</div>
         <div class="r-meta">${fecha}</div>
+        ${data.customerName ? `<div class="r-meta">Cliente: ${escapeHTML(data.customerName)}</div>` : ''}
         <hr/>${baristaLinesHtml}<hr/>
         <div class="r-foot">Preparar pedido</div>`;
     const customerHTML = `
       <div class="r-brand"><img src="${LOGO_SRC}" alt="On Coffee"></div>
       <div class="r-shop">On Coffee</div>
       <div class="r-meta">${fecha}</div>
+      ${data.customerName ? `<div class="r-meta">Cliente: ${escapeHTML(data.customerName)}</div>` : ''}
       <hr/>
       ${customerLinesHtml}
       <hr/>
@@ -638,6 +697,7 @@
       timestamp,
       status,
       reason,
+      customerName: data.customerName,
       lines: data.lines,
       subtotal: data.subtotal,
       iva: data.iva,
@@ -695,11 +755,13 @@
     }
 
     function itemDescription(item){
-      const options = [item.temperature, item.milk].filter(Boolean).join(', ');
+      const options = [item.temperature, item.milk, ...(item.extras || []).map(extra => extra.name)].filter(Boolean).join(', ');
       return `${item.qty} x ${item.name}${options ? ' (' + options + ')' : ''}`;
     }
 
-    receiptText += ESC + 'E' + '\x00' + escPosSafeText(date) + '\n' + divider + '\n';
+    receiptText += ESC + 'E' + '\x00' + escPosSafeText(date) + '\n';
+    if(data.customerName) receiptText += 'Cliente: ' + escPosSafeText(data.customerName) + '\n';
+    receiptText += divider + '\n';
     receiptText += ESC + 'a' + '\x00';
     data.lines.forEach(item => {
       receiptText += escPosSafeText(itemDescription(item)) + '\n';
@@ -713,7 +775,9 @@
     receiptText += ESC + 'E' + '\x00' + '\n';
     receiptText += ESC + 'a' + '\x01' + 'Gracias por tu compra!\n\n\n' + fullCut;
     receiptText += ESC + 'E' + '\x01' + 'COMANDA BARISTA\n';
-    receiptText += ESC + 'E' + '\x00' + escPosSafeText(date) + '\n' + divider + '\n';
+    receiptText += ESC + 'E' + '\x00' + escPosSafeText(date) + '\n';
+    if(data.customerName) receiptText += 'Cliente: ' + escPosSafeText(data.customerName) + '\n';
+    receiptText += divider + '\n';
     receiptText += ESC + 'a' + '\x00';
     data.lines.forEach(item => {
       receiptText += escPosSafeText(itemDescription(item)) + '\n';
@@ -775,6 +839,8 @@
       order = {};
       activeSaleId = null;
       saleLoggedForOrder = false;
+      customerName = '';
+      customerNameInput.value = '';
       renderMenu();
       renderOrder();
     }catch(error){
@@ -823,7 +889,7 @@
       ['Gran total neto', (totalVendidos - totalBorrados).toFixed(2)]
     ];
 
-    const detailRows = [['Fecha', 'Hora', 'Estado', 'Producto', 'Temperatura', 'Leche', 'Cantidad', 'Precio unitario', 'Subtotal venta', 'IVA 8%', 'Total venta', 'Motivo']];
+    const detailRows = [['Fecha', 'Hora', 'Estado', 'Cliente', 'Producto', 'Temperatura', 'Leche', 'Extras', 'Cantidad', 'Precio unitario', 'Subtotal venta', 'IVA 8%', 'Total venta', 'Motivo']];
     sales.forEach(sale => {
       const date = new Date(sale.timestamp);
       const status = sale.status === 'cancelado' ? 'Borrado' : 'Vendido';
@@ -834,8 +900,8 @@
           date.toLocaleDateString('es-MX'),
           date.toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'}),
           status,
+          sale.customerName || '',
           'Pedido',
-          '',
           '',
           '',
           '',
@@ -851,9 +917,11 @@
         date.toLocaleDateString('es-MX'),
         date.toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'}),
         status,
+        sale.customerName || '',
         line.name,
         line.temperature || 'No aplica',
         line.milk || 'No aplica',
+        (line.extras || []).map(extra => extra.name).join(', ') || 'No aplica',
         line.qty,
         Number(line.price).toFixed(2),
         Number(sale.subtotal || 0).toFixed(2),
@@ -887,6 +955,11 @@
     editToggle.classList.toggle('active', editMode);
     editToggle.textContent = editMode ? 'Listo' : 'Editar menú';
     renderMenu();
+  });
+
+  customerNameInput.addEventListener('input', () => {
+    customerName = customerNameInput.value;
+    if(activeSaleId) updateCurrentSavedSale();
   });
 
   (async function init(){

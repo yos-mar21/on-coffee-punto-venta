@@ -16,6 +16,8 @@
   padding: 22px;
   width: 100%;
   max-width: 360px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
   box-shadow: 0 20px 50px rgba(59,42,30,0.3);
 }
 
@@ -58,6 +60,17 @@
 
 .temperature-chips{
   margin-bottom: 18px;
+}
+
+.extra-chips{
+  max-height: 150px;
+  overflow-y: auto;
+  margin-bottom: 18px;
+}
+
+.no-extras{
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .option-chip{

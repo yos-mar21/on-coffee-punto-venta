@@ -17,6 +17,30 @@
   border-bottom: 1px solid var(--line);
 }
 
+.customer-name-field{
+  display:block;
+  margin-top:12px;
+  font-size:11px;
+  font-weight:600;
+  color:var(--muted);
+}
+
+.customer-name-input{
+  width:100%;
+  margin-top:5px;
+  padding:9px 10px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--panel);
+  color:var(--ink);
+  font:13px var(--font-body);
+}
+
+.customer-name-input:focus{
+  outline:2px solid var(--accent-soft);
+  border-color:var(--accent);
+}
+
 .order-header h2{
   font-family: var(--font-display);
   font-size:18px;
