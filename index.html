@@ -121,40 +121,36 @@
   const BEVERAGE_CATEGORIES = ['barra', 'lattes', 'especialidades', 'tes', 'frappes'];
 
   const DEFAULT_MENU = [
-    { id: 'espresso', name: 'Espresso', price: 45, category: 'barra' },
-    { id: 'espresso_cortado', name: 'Espresso cortado', price: 60, category: 'barra', hasMilk: true },
-    { id: 'americano', name: 'Americano', price: 55, category: 'barra' },
-    { id: 'americano_corto', name: 'Americano corto', price: 50, category: 'barra' },
-    { id: 'cappuccino', name: 'Cappuccino', price: 60, category: 'barra', hasMilk: true },
-    { id: 'latte_natural', name: 'Natural', price: 80, category: 'lattes', hasMilk: true },
-    { id: 'latte_vainilla', name: 'vainilla', price: 90, category: 'lattes', hasMilk: true },
-    { id: 'latte_caramelo', name: 'caramelo', price: 90, category: 'lattes', hasMilk: true },
-    { id: 'latte_avellana', name: 'avellana', price: 90, category: 'lattes', hasMilk: true },
-    { id: 'latte_pumpkin_spice', name: 'pumpkin spice', price: 90, category: 'lattes', hasMilk: true },
-    { id: 'mocha', name: 'Mocha', price: 90, category: 'especialidades', hasMilk: true },
-    { id: 'matcha_latte', name: 'Matcha latte', price: 100, category: 'especialidades', hasMilk: true },
-    { id: 'chai_especias', name: 'Chai de especias', price: 85, category: 'especialidades', hasMilk: true },
-    { id: 'chai_vainilla', name: 'Chai de vainilla', price: 85, category: 'especialidades', hasMilk: true },
-    { id: 'dirty_chai', name: 'Dirty chai', price: 90, category: 'especialidades', hasMilk: true },
-    { id: 'chocolate_on', name: 'Chocolate on', price: 90, category: 'especialidades', hasMilk: true },
-    { id: 'fresa_kiwi', name: 'Fresa kiwi', price: 80, category: 'tes' },
-    { id: 'frutas_pasion', name: 'frutas de la pasión', price: 80, category: 'tes' },
-    { id: 'frappe_oreo', name: 'Frappe de Oreo', price: 100, category: 'frappes', hasMilk: true },
-    { id: 'frappe_caramelo', name: 'Frappe de caramelo', price: 100, category: 'frappes', hasMilk: true },
-    { id: 'frappe_vainilla', name: 'Frappe de vainilla', price: 100, category: 'frappes', hasMilk: true },
-    { id: 'frappe_mazapan', name: 'Frappe de mazapán', price: 100, category: 'frappes', hasMilk: true },
-    { id: 'frappe_moka', name: 'FRAPPE DE MOKA', price: 100, category: 'frappes', hasMilk: true },
-    { id: 'pan_muerto', name: 'Pan de muerto', price: 50, category: 'postres' },
-    { id: 'extra_shot', name: 'Shot espresso', price: 20, category: 'extras' },
+    { id: 'espresso', name: 'Espresso', price: 30, category: 'barra' },
+    { id: 'espresso_cortado', name: 'Cortadito', price: 60, category: 'barra', hasMilk: true },
+    { id: 'cappuccino', name: 'Cappuccino', price: 80, category: 'barra', hasMilk: true },
+    { id: 'americano', name: 'Americano', price: 60, category: 'barra' },
+    { id: 'latte_natural', name: 'Latte', price: 80, category: 'lattes', hasMilk: true },
+    { id: 'mocha', name: 'Moka', price: 95, category: 'especialidades', hasMilk: true },
+    { id: 'matcha_latte', name: 'Matcha', price: 100, category: 'especialidades', hasMilk: true },
+    { id: 'chai_especias', name: 'Chai', price: 95, category: 'especialidades', hasMilk: true },
+    { id: 'chocolate_on', name: 'Chocolate On', price: 95, category: 'especialidades', hasMilk: true },
+    { id: 'dirty_chai', name: 'Dirty chai', price: 95, category: 'especialidades', hasMilk: true },
+    { id: 'fresa_kiwi', name: 'Tisana de fresa kiwi', price: 95, category: 'tes' },
+    { id: 'frutos_rojos', name: 'Tisana de frutos rojos', price: 95, category: 'tes' },
+    { id: 'frappe_oreo', name: 'Frappe de Oreo', price: 120, category: 'frappes', hasMilk: true },
+    { id: 'frappe_mazapan', name: 'Frappe de mazapán', price: 120, category: 'frappes', hasMilk: true },
+    { id: 'frappe_moka', name: 'Frappe de Moka', price: 120, category: 'frappes', hasMilk: true },
+    { id: 'frappe_caramelo', name: 'Frappe de caramelo', price: 120, category: 'frappes', hasMilk: true },
+    { id: 'frappe_vainilla', name: 'Frappe de vainilla', price: 120, category: 'frappes', hasMilk: true },
+    { id: 'pay_manzana', name: 'Pay de manzana', price: 25, category: 'postres' },
+    { id: 'pastel_chocolate', name: 'Pastel de chocolate', price: 80, category: 'postres' },
+    { id: 'muffin', name: 'Muffin', price: 55, category: 'postres' },
+    { id: 'extra_macarrones', name: 'Macarrons', price: 25, category: 'postres' },
+    { id: 'extra_galletas', name: 'Galletas', price: 25, category: 'postres' },
+    { id: 'extra_cheesecake', name: 'Cheesecake', price: 80, category: 'postres' },
+    { id: 'pan_muerto', name: 'Pan de muerto', price: 55, category: 'postres' },
+    { id: 'extra_shot', name: 'Shot de espresso', price: 30, category: 'extras' },
     { id: 'extra_foam', name: 'Foam', price: 20, category: 'extras' },
-    { id: 'extra_jarabe', name: 'Jarabe artesanal', price: 15, category: 'extras' },
+    { id: 'extra_jarabe', name: 'Jarabes', price: 15, category: 'extras' },
     { id: 'extra_leche_avena', name: 'Leche de avena', price: 20, category: 'extras' },
-    { id: 'extra_macarrones', name: 'macarrones', price: 20, category: 'postres' },
-    { id: 'extra_galletas', name: 'GALLETAS', price: 20, category: 'postres' },
-    { id: 'extra_pastel_chocolate', name: 'REBANADA DE PASTEL CHOCOLATE', price: 60, category: 'postres' },
-    { id: 'extra_cheesecake', name: 'REBANADA cheesecake', price: 60, category: 'postres' },
   ];
-  const MENU_VERSION = 10;
+  const MENU_VERSION = 11;
 
   let menu = [];
   let order = {};
@@ -199,19 +195,14 @@
     return '$' + Number(n).toLocaleString('es-MX', { minimumFractionDigits: n % 1 !== 0 ? 2 : 0, maximumFractionDigits: 2 });
   }
 
-  function calculateLineAmounts(item, amount){
-    const includesIVA = ['barra', 'lattes', 'especialidades', 'frappes', 'postres', 'extras'].includes(item.category);
-    if(includesIVA){
-      const subtotal = amount / (1 + IVA_RATE);
-      return { subtotal, iva: amount - subtotal, total: amount };
-    }
-    const iva = amount * IVA_RATE;
-    return { subtotal: amount, iva, total: amount + iva };
+  function calculateLineAmounts(amount){
+    const subtotal = amount / (1 + IVA_RATE);
+    return { subtotal, iva: amount - subtotal, total: amount };
   }
 
   function calculateOrderTotals(lines){
     return lines.reduce((totals, line) => {
-      const amounts = calculateLineAmounts(line.item, line.amount);
+      const amounts = calculateLineAmounts(line.amount);
       totals.subtotal += amounts.subtotal;
       totals.iva += amounts.iva;
       totals.total += amounts.total;
@@ -669,8 +660,7 @@
       <hr/>
       ${customerLinesHtml}
       <hr/>
-      <div class="r-summary"><span>Subtotal</span><span>${fmt(data.subtotal)}</span></div>
-      <div class="r-summary"><span>IVA (8%)</span><span>${fmt(data.iva)}</span></div>
+      <div class="r-meta">Precios con IVA incluido</div>
       <div class="r-total"><span>TOTAL</span><span>${fmt(data.total)}</span></div>
       <div class="r-foot">¡Gracias por tu compra!</div>
     `;
@@ -768,8 +758,8 @@
       receiptText += '  ' + escPosSafeText(fmt(item.lineTotal)) + '\n';
     });
     receiptText += divider + '\n';
-    line('Subtotal', fmt(data.subtotal));
-    line('IVA (8%)', fmt(data.iva));
+    receiptText += ESC + 'a' + '\x01' + escPosSafeText('Precios con IVA incluido') + '\n';
+    receiptText += ESC + 'a' + '\x00';
     receiptText += ESC + 'E' + '\x01';
     line('TOTAL', fmt(data.total));
     receiptText += ESC + 'E' + '\x00' + '\n';
