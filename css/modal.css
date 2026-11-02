@@ -5,7 +5,8 @@
   align-items:center;
   justify-content:center;
   z-index: 50;
-  padding: 20px;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+    max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
 }
 
 .modal-overlay.open{ display:flex; }
@@ -16,7 +17,8 @@
   padding: 22px;
   width: 100%;
   max-width: 360px;
-  max-height: calc(100vh - 40px);
+  max-height: calc(100vh - 24px);
+  max-height: calc(100dvh - 24px);
   overflow-y: auto;
   box-shadow: 0 20px 50px rgba(59,42,30,0.3);
 }
@@ -74,6 +76,7 @@
 }
 
 .option-chip{
+  min-height:42px;
   padding: 9px 14px;
   border-radius: 999px;
   border: 1.5px solid var(--line);
@@ -106,4 +109,10 @@
 .modal-actions{
   display:flex;
   gap:10px;
+}
+
+@media (max-width: 460px){
+  .modal-card{ padding:18px 16px; border-radius:18px; }
+  .modal-header h3{ font-size:18px; }
+  .modal-actions .btn{ min-height:48px; }
 }

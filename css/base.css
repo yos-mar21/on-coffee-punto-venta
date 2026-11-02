@@ -18,7 +18,7 @@
 }
 
 *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
-html,body{margin:0; padding:0; height:100%;}
+html,body{margin:0; padding:0; width:100%; min-height:100%; height:100%;}
 
 body{
   background:
@@ -37,10 +37,13 @@ body{
 
 #app{
   width: min(100%, 1360px);
+  height:100vh;
+  height:100dvh;
   min-height:100vh;
   display:flex;
   flex-direction:column;
   margin: 0 auto;
+  overflow:hidden;
 }
 
 button, input, select {
@@ -49,3 +52,17 @@ button, input, select {
 
 ::-webkit-scrollbar{ width:6px; }
 ::-webkit-scrollbar-thumb{ background: var(--panel-alt-2); border-radius:4px; }
+
+button, input, select{ touch-action:manipulation; }
+
+button:focus-visible, input:focus-visible, select:focus-visible{
+  outline:3px solid var(--accent);
+  outline-offset:2px;
+}
+
+@media (max-height: 500px){
+  html,body{ height:auto; min-height:100%; }
+  body{ overflow:auto; }
+  #app{ height:auto; min-height:100vh; min-height:100dvh; overflow:visible; }
+  main{ flex:0 0 auto; }
+}

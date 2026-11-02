@@ -30,11 +30,11 @@
   </header>
 
   <main>
-    <div class="menu-wrap">
+    <div class="menu-wrap" id="menuWrap">
       <div class="menu-scroll" id="menuScroll"></div>
     </div>
 
-    <div class="order-panel">
+    <div class="order-panel" id="orderPanel">
       <div class="order-header">
         <h2>Pedido actual</h2>
         <label class="customer-name-field" for="customerName">Nombre del cliente (opcional)</label>
@@ -62,6 +62,18 @@
       <button class="report-btn" id="reportBtn">Descargar reporte Excel</button>
     </div>
   </main>
+
+  <nav class="mobile-nav" aria-label="Navegación del punto de venta">
+    <button class="mobile-nav-button active" type="button" data-mobile-view="menu" aria-controls="menuWrap" aria-pressed="true">
+      <span class="mobile-nav-icon" aria-hidden="true">☕</span>
+      <span>Menú</span>
+    </button>
+    <button class="mobile-nav-button" type="button" data-mobile-view="order" aria-controls="orderPanel" aria-pressed="false">
+      <span class="mobile-nav-icon" aria-hidden="true">🧾</span>
+      <span>Pedido</span>
+      <span class="mobile-order-count" id="mobileOrderCount" hidden>0</span>
+    </button>
+  </nav>
 </div>
 
 <div id="receipt"></div>
@@ -183,6 +195,9 @@
   const extraChips = document.getElementById('extraChips');
   const modalQtyValue = document.getElementById('modalQtyValue');
   const customerNameInput = document.getElementById('customerName');
+  const app = document.getElementById('app');
+  const mobileViewButtons = document.querySelectorAll('[data-mobile-view]');
+  const mobileOrderCount = document.getElementById('mobileOrderCount');
   const IVA_RATE = 0.08;
   const OAT_MILK_EXTRA = 20;
   const LOGO_SRC = 'css/logo_negro_vaso_transparente.png';
@@ -539,6 +554,16 @@
 
   function renderOrder(){
     const keys = Object.keys(order);
+    const itemCount = Object.values(order).reduce((total, quantity) => total + quantity, 0);
+    mobileOrderCount.textContent = itemCount;
+    mobileOrderCount.hidden = itemCount === 0;
+    mobileViewButtons.forEach(button => {
+      if(button.dataset.mobileView === 'order'){
+        button.setAttribute('aria-label', itemCount
+          ? `Pedido, ${itemCount} ${itemCount === 1 ? 'artículo' : 'artículos'}`
+          : 'Pedido vacío');
+      }
+    });
     if(keys.length === 0){
       orderList.innerHTML = '<div class="empty-order">Toca un producto del menú<br>para agregarlo al pedido</div>';
       subtotalAmount.textContent = fmt(0);
@@ -945,6 +970,18 @@
     editToggle.classList.toggle('active', editMode);
     editToggle.textContent = editMode ? 'Listo' : 'Editar menú';
     renderMenu();
+  });
+
+  mobileViewButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const showOrder = button.dataset.mobileView === 'order';
+      app.classList.toggle('mobile-order-view', showOrder);
+      mobileViewButtons.forEach(tab => {
+        const selected = tab === button;
+        tab.classList.toggle('active', selected);
+        tab.setAttribute('aria-pressed', String(selected));
+      });
+    });
   });
 
   customerNameInput.addEventListener('input', () => {
