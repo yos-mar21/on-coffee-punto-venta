@@ -131,6 +131,12 @@
     { id: 'fria', label: 'Fría' },
   ];
   const BEVERAGE_CATEGORIES = ['barra', 'lattes', 'especialidades', 'tes', 'frappes'];
+  const SYRUP_EXTRA_IDS = new Set([
+    'extra_jarabe_vainilla',
+    'extra_jarabe_caramelo',
+    'extra_jarabe_avellana',
+    'extra_jarabe_calabaza',
+  ]);
 
   const DEFAULT_MENU = [
     { id: 'espresso', name: 'Espresso', price: 30, category: 'barra' },
@@ -159,10 +165,13 @@
     { id: 'pan_muerto', name: 'Pan de muerto', price: 55, category: 'postres' },
     { id: 'extra_shot', name: 'Shot de espresso', price: 30, category: 'extras' },
     { id: 'extra_foam', name: 'Foam', price: 20, category: 'extras' },
-    { id: 'extra_jarabe', name: 'Jarabes', price: 15, category: 'extras' },
+    { id: 'extra_jarabe_vainilla', name: 'Jarabe de vainilla', price: 15, category: 'extras' },
+    { id: 'extra_jarabe_caramelo', name: 'Jarabe de caramelo', price: 15, category: 'extras' },
+    { id: 'extra_jarabe_avellana', name: 'Jarabe de avellana', price: 15, category: 'extras' },
+    { id: 'extra_jarabe_calabaza', name: 'Jarabe de calabaza', price: 15, category: 'extras' },
     { id: 'extra_leche_avena', name: 'Leche de avena', price: 20, category: 'extras' },
   ];
-  const MENU_VERSION = 11;
+  const MENU_VERSION = 12;
 
   let menu = [];
   let order = {};
@@ -258,7 +267,9 @@
 
   function availableExtras(item){
     return menu.filter(extra =>
-      extra.category === 'extras' && !(item.hasMilk && extra.id === 'extra_leche_avena')
+      extra.category === 'extras' &&
+      !(item.hasMilk && extra.id === 'extra_leche_avena') &&
+      (item.category === 'lattes' || !SYRUP_EXTRA_IDS.has(extra.id))
     );
   }
 
@@ -282,24 +293,46 @@
     try{
       const verRes = await storageGet('menu-version');
       const storedVersion = verRes && verRes.value ? parseInt(verRes.value, 10) : 0;
+      const res = await storageGet('menu-items');
+      if(res && res.value){
+        const savedMenu = JSON.parse(res.value);
+        if(Array.isArray(savedMenu)){
+          if(storedVersion < 11){
+            menu = DEFAULT_MENU.slice();
+            await saveMenu();
+            await storageSet('menu-version', String(MENU_VERSION));
+            return;
+          }
+          menu = savedMenu;
+          if(storedVersion < MENU_VERSION){
+            const oldSyrup = menu.find(item => item.id === 'extra_jarabe');
+            if(oldSyrup){
+              oldSyrup.id = 'extra_jarabe_vainilla';
+              oldSyrup.name = 'Jarabe de vainilla';
+            }
+            DEFAULT_MENU.filter(item => SYRUP_EXTRA_IDS.has(item.id)).forEach(syrup => {
+              if(!menu.some(item => item.id === syrup.id)){
+                menu.push({ ...syrup });
+              }
+            });
+            await saveMenu();
+            await storageSet('menu-version', String(MENU_VERSION));
+          }
+          return;
+        }
+      }
       if(storedVersion < MENU_VERSION){
         menu = DEFAULT_MENU.slice();
         await saveMenu();
         await storageSet('menu-version', String(MENU_VERSION));
         return;
       }
-      const res = await storageGet('menu-items');
-      if(res && res.value){
-        const savedMenu = JSON.parse(res.value);
-        if(Array.isArray(savedMenu)){
-          menu = savedMenu;
-          return;
-        }
-      }
-    }catch(e){  }
+    }catch(e){
+      console.error('No se pudo cargar o migrar el menú; se usará el menú predeterminado.', e);
+    }
     menu = DEFAULT_MENU.slice();
     await saveMenu();
-    try{ await storageSet('menu-version', String(MENU_VERSION)); }catch(e){}
+    await storageSet('menu-version', String(MENU_VERSION));
   }
 
   async function saveMenu(){
@@ -512,6 +545,9 @@
         if(pendingExtras.has(extraId)){
           pendingExtras.delete(extraId);
         }else{
+          if(SYRUP_EXTRA_IDS.has(extraId)){
+            SYRUP_EXTRA_IDS.forEach(syrupId => pendingExtras.delete(syrupId));
+          }
           pendingExtras.add(extraId);
         }
         updateMilkModalPrice();
@@ -839,7 +875,16 @@
   printBtn.addEventListener('click', async () => {
     if(Object.keys(order).length === 0 || saleLoggedForOrder) return;
     const data = getCurrentOrderData();
-    saveSale({ status: 'vendido', reason: 'Compra pagada' });
+    try{
+      if(!saveSale({ status: 'vendido', reason: 'Compra pagada' })){
+        throw new Error('No se pudo registrar la venta.');
+      }
+    }catch(error){
+      console.error('No se pudo registrar la venta localmente:', error);
+      alert('No se pudo registrar la venta en este dispositivo. No se intentó imprimir el ticket.\n\n' +
+        (error && error.message ? error.message : String(error)));
+      return;
+    }
     renderOrder();
     try{
       const printer = await getReceiptPrinter();
@@ -851,21 +896,37 @@
         flavor: 'plain',
         data: commands
       }]);
-      order = {};
-      activeSaleId = null;
-      saleLoggedForOrder = false;
-      customerName = '';
-      customerNameInput.value = '';
-      renderMenu();
-      renderOrder();
     }catch(error){
-      saleLoggedForOrder = false;
-      renderOrder();
       console.error('Error al imprimir el ticket ESC/POS:', error);
-      alert('No se pudo imprimir el ticket. El pedido sigue en pantalla para que puedas reintentar.\n\n' +
-        (error && error.message ? error.message : String(error)));
+      const errorMessage = error && error.message ? error.message : String(error);
+      completePaidOrder();
+      if(/No se seleccionó una impresora válida/i.test(errorMessage)){
+        alert('No seleccionaste una impresora. La venta sí quedó registrada y aparecerá en el reporte Excel.');
+      }else if(/QZ Tray|Unable to establish connection/i.test(errorMessage)){
+        alert('No tienes una impresora térmica conectada o QZ Tray no está activo. La venta sí quedó registrada y aparecerá en el reporte Excel.');
+      }else{
+        alert(`La venta sí quedó registrada y aparecerá en el reporte Excel, pero no se pudo imprimir el ticket.\n\n${errorMessage}`);
+      }
+      return;
     }
+    completePaidOrder();
   });
+
+  function completePaidOrder(){
+    order = {};
+    activeSaleId = null;
+    saleLoggedForOrder = false;
+    customerName = '';
+    customerNameInput.value = '';
+    app.classList.remove('mobile-order-view');
+    mobileViewButtons.forEach(button => {
+      const selected = button.dataset.mobileView === 'menu';
+      button.classList.toggle('active', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    });
+    renderMenu();
+    renderOrder();
+  }
 
   function csvCell(value){
     return '"' + String(value).replace(/"/g, '""') + '"';
