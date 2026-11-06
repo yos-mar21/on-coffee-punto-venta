@@ -107,6 +107,7 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.5/qz-tray.js"></script>
 <script>
 (function(){
   const CATEGORIES = [
@@ -606,7 +607,6 @@
       totalAmount.textContent = fmt(0);
       newOrderBtn.disabled = true;
       printBtn.disabled = true;
-      printBtn.textContent = 'Pagar';
       return;
     }
     const pricedLines = [];
@@ -647,12 +647,11 @@
     ivaAmount.textContent = fmt(totals.iva);
     totalAmount.textContent = fmt(totals.total);
     newOrderBtn.disabled = false;
-    printBtn.disabled = false;
-    printBtn.textContent = saleLoggedForOrder ? 'Reimprimir ticket' : 'Pagar';
+    printBtn.disabled = saleLoggedForOrder;
   }
 
   newOrderBtn.addEventListener('click', () => {
-    if(Object.keys(order).length > 0 && !saleLoggedForOrder){
+    if(Object.keys(order).length > 0){
       saveSale({ status: 'cancelado', reason: 'Pedido borrado' });
     }
     order = {};
@@ -690,56 +689,40 @@
   }
 
   function buildReceiptHTML(mode){
-    const savedSale = activeSaleId ? loadSales().find(sale => sale.id === activeSaleId) : null;
-    const now = savedSale ? new Date(savedSale.timestamp) : new Date();
+    const now = new Date();
     const fecha = now.toLocaleDateString('es-MX') + ' ' + now.toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'});
     const data = getCurrentOrderData();
-    function fmtReceipt(amount){
-      return '$' + Number(amount).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
     function lineOptions(line){
       return [line.temperature, line.milk, ...(line.extras || []).map(extra => extra.name)].filter(Boolean).join(', ');
     }
     const customerLinesHtml = data.lines.map(line => {
-      const options = lineOptions(line);
       return `
-        <div class="r-item">
-          <div class="r-line">
-            <span class="r-name">${line.qty} x ${escapeHTML(line.name)}</span>
-            <span class="r-amount">${fmtReceipt(line.lineTotal)}</span>
-          </div>
-          ${options ? `<div class="r-options">${escapeHTML(options)}</div>` : ''}
+        <div class="r-line">
+          <span class="r-name">${line.qty} x ${escapeHTML(line.name)}${lineOptions(line) ? ' (' + escapeHTML(lineOptions(line)) + ')' : ''}</span>
+          <span>${fmt(line.lineTotal)}</span>
         </div>`;
     }).join('');
-    const baristaLinesHtml = data.lines.map(line => {
-      const options = lineOptions(line);
-      return `
-        <div class="r-item">
-          <div class="r-line">
-            <span class="r-name">${line.qty} x ${escapeHTML(line.name)}</span>
-          </div>
-          ${options ? `<div class="r-options">${escapeHTML(options)}</div>` : ''}
-        </div>`;
-    }).join('');
+    const baristaLinesHtml = data.lines.map(line => `
+        <div class="r-line">
+          <span class="r-name">${line.qty} x ${escapeHTML(line.name)}${lineOptions(line) ? ' (' + escapeHTML(lineOptions(line)) + ')' : ''}</span>
+        </div>`).join('');
     const baristaHTML = `
-        <div class="r-brand"><img src="${LOGO_SRC}" alt=""></div>
-        <div class="r-shop">☕ On Coffee</div>
+        <div class="r-brand"><img src="${LOGO_SRC}" alt="On Coffee"></div>
         <div class="r-shop">COMANDA BARISTA</div>
-        <div class="r-meta">Fecha y hora de venta: ${fecha}</div>
+        <div class="r-meta">${fecha}</div>
         ${data.customerName ? `<div class="r-meta">Cliente: ${escapeHTML(data.customerName)}</div>` : ''}
         <hr/>${baristaLinesHtml}<hr/>
         <div class="r-foot">Preparar pedido</div>`;
     const customerHTML = `
-      <div class="r-brand"><img src="${LOGO_SRC}" alt=""></div>
-      <div class="r-shop">☕ On Coffee</div>
-      <div class="r-title">TICKET DE COMPRA</div>
-      <div class="r-meta">Fecha y hora de venta: ${fecha}</div>
+      <div class="r-brand"><img src="${LOGO_SRC}" alt="On Coffee"></div>
+      <div class="r-shop">On Coffee</div>
+      <div class="r-meta">${fecha}</div>
       ${data.customerName ? `<div class="r-meta">Cliente: ${escapeHTML(data.customerName)}</div>` : ''}
       <hr/>
-      <div class="r-columns"><span>PRODUCTO</span><span>IMPORTE</span></div>
       ${customerLinesHtml}
       <hr/>
-      <div class="r-total"><span>TOTAL</span><span>${fmtReceipt(data.total)}</span></div>
+      <div class="r-meta">Precios con IVA incluido</div>
+      <div class="r-total"><span>TOTAL</span><span>${fmt(data.total)}</span></div>
       <div class="r-foot">¡Gracias por tu compra!</div>
     `;
     return mode === 'barista' ? baristaHTML : mode === 'both'
@@ -796,10 +779,104 @@
     saveSale({ status: 'vendido', reason: '' });
   }
 
-  printBtn.addEventListener('click', () => {
-    if(Object.keys(order).length === 0) return;
+  let receiptPrinterName = null;
+
+  function escPosSafeText(value){
+    return String(value)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\x20-\x7E]/g, '');
+  }
+
+  function buildEscPosReceipt(data){
+    const ESC = '\x1B';
+    const GS = '\x1D';
+    const fullCut = GS + 'V' + '0';
+    const width = 42;
+    const divider = '-'.repeat(width);
+    const date = new Date().toLocaleDateString('es-MX') + ' ' +
+      new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+    let receiptText = ' '.repeat(Math.floor((width - 9) / 2)) + 'ON COFFEE\n';
+
+    function line(label, value){
+      const safeLabel = escPosSafeText(label);
+      const safeValue = escPosSafeText(value);
+      const spaces = Math.max(1, width - safeLabel.length - safeValue.length);
+      receiptText += safeLabel + ' '.repeat(spaces) + safeValue + '\n';
+    }
+
+    function itemDescription(item){
+      const options = [item.temperature, item.milk, ...(item.extras || []).map(extra => extra.name)].filter(Boolean).join(', ');
+      return `${item.qty} x ${item.name}${options ? ' (' + options + ')' : ''}`;
+    }
+
+    receiptText += ESC + 'E' + '\x00' + escPosSafeText(date) + '\n';
+    if(data.customerName) receiptText += 'Cliente: ' + escPosSafeText(data.customerName) + '\n';
+    receiptText += divider + '\n';
+    receiptText += ESC + 'a' + '\x00';
+    data.lines.forEach(item => {
+      receiptText += escPosSafeText(itemDescription(item)) + '\n';
+      receiptText += '  ' + escPosSafeText(fmt(item.lineTotal)) + '\n';
+    });
+    receiptText += divider + '\n';
+    receiptText += ESC + 'a' + '\x01' + escPosSafeText('Precios con IVA incluido') + '\n';
+    receiptText += ESC + 'a' + '\x00';
+    receiptText += ESC + 'E' + '\x01';
+    line('TOTAL', fmt(data.total));
+    receiptText += ESC + 'E' + '\x00' + '\n';
+    receiptText += ESC + 'a' + '\x01' + 'Gracias por tu compra!\n\n\n' + fullCut;
+    receiptText += ESC + 'E' + '\x01' + 'COMANDA BARISTA\n';
+    receiptText += ESC + 'E' + '\x00' + escPosSafeText(date) + '\n';
+    if(data.customerName) receiptText += 'Cliente: ' + escPosSafeText(data.customerName) + '\n';
+    receiptText += divider + '\n';
+    receiptText += ESC + 'a' + '\x00';
+    data.lines.forEach(item => {
+      receiptText += escPosSafeText(itemDescription(item)) + '\n';
+    });
+    return receiptText + '\n\n\n' + fullCut;
+  }
+
+  async function getReceiptPrinter(){
+    if(typeof qz === 'undefined'){
+      throw new Error('No se pudo cargar QZ Tray. Revisa tu conexión a internet y vuelve a abrir la página.');
+    }
+    if(!qz.websocket.isActive()){
+      await qz.websocket.connect();
+    }
+
+    const printers = await qz.printers.find();
+    if(!printers.length){
+      throw new Error('QZ Tray no encontró impresoras. Revisa que la Nextep esté encendida y conectada al Mac.');
+    }
+    if(receiptPrinterName && printers.includes(receiptPrinterName)){
+      return receiptPrinterName;
+    }
+
+    const matches = printers.filter(name => /nextep|ne[\s_-]?510x/i.test(name));
+    if(matches.length === 1){
+      receiptPrinterName = matches[0];
+      return receiptPrinterName;
+    }
+
+    const choices = matches.length ? matches : printers;
+    const selection = window.prompt(
+      'Escribe el número de la impresora Nextep:\n' +
+      choices.map((name, index) => `${index + 1}. ${name}`).join('\n'),
+      '1'
+    );
+    const selectedIndex = Number(selection) - 1;
+    if(selection === null || !Number.isInteger(selectedIndex) || !choices[selectedIndex]){
+      throw new Error('No se seleccionó una impresora válida.');
+    }
+    receiptPrinterName = choices[selectedIndex];
+    return receiptPrinterName;
+  }
+
+  printBtn.addEventListener('click', async () => {
+    if(Object.keys(order).length === 0 || saleLoggedForOrder) return;
+    const data = getCurrentOrderData();
     try{
-      if(!saleLoggedForOrder && !saveSale({ status: 'vendido', reason: 'Compra pagada' })){
+      if(!saveSale({ status: 'vendido', reason: 'Compra pagada' })){
         throw new Error('No se pudo registrar la venta.');
       }
     }catch(error){
@@ -809,9 +886,47 @@
       return;
     }
     renderOrder();
-    receipt.innerHTML = buildReceiptHTML('both');
-    window.print();
+    try{
+      const printer = await getReceiptPrinter();
+      const config = qz.configs.create(printer);
+      const commands = buildEscPosReceipt(data);
+      await qz.print(config, [{
+        type: 'raw',
+        format: 'command',
+        flavor: 'plain',
+        data: commands
+      }]);
+    }catch(error){
+      console.error('Error al imprimir el ticket ESC/POS:', error);
+      const errorMessage = error && error.message ? error.message : String(error);
+      completePaidOrder();
+      if(/No se seleccionó una impresora válida/i.test(errorMessage)){
+        alert('No seleccionaste una impresora. La venta sí quedó registrada y aparecerá en el reporte Excel.');
+      }else if(/QZ Tray|Unable to establish connection/i.test(errorMessage)){
+        alert('No tienes una impresora térmica conectada o QZ Tray no está activo. La venta sí quedó registrada y aparecerá en el reporte Excel.');
+      }else{
+        alert(`La venta sí quedó registrada y aparecerá en el reporte Excel, pero no se pudo imprimir el ticket.\n\n${errorMessage}`);
+      }
+      return;
+    }
+    completePaidOrder();
   });
+
+  function completePaidOrder(){
+    order = {};
+    activeSaleId = null;
+    saleLoggedForOrder = false;
+    customerName = '';
+    customerNameInput.value = '';
+    app.classList.remove('mobile-order-view');
+    mobileViewButtons.forEach(button => {
+      const selected = button.dataset.mobileView === 'menu';
+      button.classList.toggle('active', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    });
+    renderMenu();
+    renderOrder();
+  }
 
   function csvCell(value){
     return '"' + String(value).replace(/"/g, '""') + '"';
